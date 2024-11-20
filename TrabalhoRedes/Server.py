@@ -1,39 +1,74 @@
 import socket
 import struct
+import time
 import threading
 
-# def discover(awsertTimeLimit):
-#     print('oiii')
+activeDevices = []
+notActiveDevicesCount = 0
+totalDiscoveryTime = 0 
+
+def discover(network, waitingTime):
+    ep = network.split('/')
+    mask = int(ep[1])
+    numHosts = (2 ** (32 - mask)) - 2
+    ar = ep[0].split('.')
+    start = int(ar[3]) + 1;
+    end = start + numHosts;
     
-    
-    
+    count = 1;
+    for i in range(start, end):
+        ip = f"{ar[0]}.{ar[1]}.{ar[2]}.{i}"
+        print(f"Sending packet to {ip}") 
+        icmp_packet_sender = IcmpPacketSender(ip, 0, 'oi', 128, count, waitingTime, notActiveDevicesCount, activeDevices)
+        icmp_packet_sender.send_icmp_packet()
+        count = count + 1
         
-# def Main():
-#     network = input("Insira IP:")
-#     mask = input("Insira a máscara")
-#     awnserTimelimit = input("Insira o tempo limite de respost:")
+
+def printInfo(totalDiscoveryTime):
+     # Imprime o cabeçalho
+    print(f"{'IP':<15} {'Response Time (ms)'}")
+    print("-" * 35)  # Linha de separação
+
+    # Imprime os dados
+    for device in activeDevices:
+        print(f"{device['ip']:<15} {device['responseTime']:.4f}")
+        
+    print(f"Active Devices: {len(activeDevices)}")
+    print(f"Total Devices: {len(activeDevices) + notActiveDevicesCount}")
+    print(f"Total Discovery Time: {totalDiscoveryTime}")
+
 
 def main():
-        target_ip = input("Enter target IP: ")
-        port = int(input("Enter port (optional, press Enter to skip): ") or 0)
-        data = input("Enter data (optional, press Enter to use default): ")
-        ttl = int(input("Enter TTL (optional, press Enter to use default): ") or 64)
-        icmp_id = int(input("Enter ICMP ID (optional, press Enter to use default): ") or 12345)
+        network = input("Enter network and mask:")
+        waitingTime = input("Enter waiting time: ")
+        # data = input("Enter data (optional, press Enter to use default): ") 
+        
+        discoveryStart = time.time()
+        discover(network, waitingTime/1000)
+        discoveryEnd = time.time()
+        totalDiscoveryTime = discoveryEnd - discoveryStart
+        printInfo(totalDiscoveryTime)
+        
+        # port = 0
+        # icmp_id = 1234
 
-        icmp_packet_sender = IcmpPacketSender(target_ip, port, data, ttl, icmp_id)
-        icmp_packet_sender.send_icmp_packet()
+        # icmp_packet_sender = IcmpPacketSender(target_ip, port, data, ttl, icmp_id)
+        # icmp_packet_sender.send_icmp_packet()
     
     
 class IcmpPacketSender:
-    def __init__(self, target_ip, port=None, data=None, ttl=64, icmp_id=12345):
+    def __init__(self, target_ip, port, data, ttl, icmp_id, waitingTime, notActiveMachinesCount, activeDevices):
         self.target_ip = target_ip
         self.port = port
         self.data = data
         self.ttl = ttl
         self.icmp_id = icmp_id
-        
+        self.waitingTime = waitingTime
+        self.notActiveMachinesCount = notActiveMachinesCount  # Atribuição direta
+        self.activeDevices = activeDevices
         
     def send_icmp_packet(self):
+        global notActiveDevicesCount  # Declarando como global para modificar o valor
         icmp_type = 8  # ICMP echo request
         icmp_code = 0
         icmp_checksum = 0
@@ -59,24 +94,40 @@ class IcmpPacketSender:
             # Create raw socket
             s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
             s.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, struct.pack("I", self.ttl))
-            s.settimeout(2)
+            s.settimeout(int(self.waitingTime))
 
             # Send the packet
             s.sendto(icmp_packet, (self.target_ip, 0))
             print("ICMP packet sent successfully!")
+            
+            responseStart_time = time.time()
 
             # Wait for response
             response, addr = s.recvfrom(1024)
             print(f"Received response from {addr[0]}: {response}")
+            
+            responseEnd_time = time.time()
+            
+            device = {"ip": addr[0], "responseTime": responseEnd_time - responseStart_time}
+            self.addDevice(device)
 
         except socket.timeout:
             print("No response received (timeout).")
+            notActiveDevicesCount += 1 
 
         finally:
             s.close()
-
+            
+    def addDevice(self, device):
+        isContained= False
+        for i in range(len(activeDevices)):
+            b = activeDevices[i]
+            if(b["ip"] == device["ip"]):
+                isContained = True
         
-         
+        if(not isContained):
+            activeDevices.append(device)
+        
     def calculate_checksum(self, data):
         checksum = 0
 
@@ -95,6 +146,7 @@ class IcmpPacketSender:
 
         # Return one's complement of the checksum
         return ~checksum & 0xffff
+    
 
     
 main()
