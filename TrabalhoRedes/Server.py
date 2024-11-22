@@ -12,10 +12,10 @@ def discover(network, waitingTime):
     mask = int(ep[1])
     numHosts = (2 ** (32 - mask)) - 2
     ar = ep[0].split('.')
-    start = int(ar[3]) + 1;
-    end = start + numHosts;
+    start = int(ar[3]) + 1
+    end = start + numHosts
     
-    count = 1;
+    count = 1
     for i in range(start, end):
         ip = f"{ar[0]}.{ar[1]}.{ar[2]}.{i}"
         print(f"Sending packet to {ip}") 
