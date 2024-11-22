@@ -44,7 +44,7 @@ def main():
         # data = input("Enter data (optional, press Enter to use default): ") 
         
         discoveryStart = time.time()
-        discover(network, waitingTime/1000)
+        discover(network, int(waitingTime)/1000)
         discoveryEnd = time.time()
         totalDiscoveryTime = discoveryEnd - discoveryStart
         printInfo(totalDiscoveryTime)
@@ -91,6 +91,7 @@ class IcmpPacketSender:
 
         # Send the ICMP packet
         try:
+            s = None 
             # Create raw socket
             s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
             s.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, struct.pack("I", self.ttl))
@@ -115,8 +116,12 @@ class IcmpPacketSender:
             print("No response received (timeout).")
             notActiveDevicesCount += 1 
 
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
         finally:
-            s.close()
+            if s:  # Verifica se o socket foi criado
+                s.close()
             
     def addDevice(self, device):
         isContained= False
@@ -148,5 +153,5 @@ class IcmpPacketSender:
         return ~checksum & 0xffff
     
 
-    
+# 192.168.0.0/24 
 main()
