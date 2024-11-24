@@ -2,6 +2,7 @@
 import socket
 import struct
 import time
+from datetime import datetime
 from ethernet_tools import EthernetFrame, IPV4, UDP, TCP, hexdump, packetTranslator, dnsTranslator, httpTranslator
 
 history = []
@@ -11,20 +12,13 @@ s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))
 
 def htmlGenerator():
     archiveName = 'history'
-    """
-    Cria um arquivo HTML com uma lista de frutas.
-
-    Args:
-        nome_arquivo (str): Nome do arquivo HTML a ser criado.
-        frutas (list): Lista de frutas para incluir na página HTML.
-    """
-    conteudo_html = f"""
+    content_html = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Lista de Frutas</title>
+        <title>History:</title>
         <style>
             body {{ font-family: Arial, sans-serif; margin: 20px; }}
             h1 {{ color: #4CAF50; }}
@@ -37,16 +31,16 @@ def htmlGenerator():
     """
 
     for site in history:
-        conteudo_html += f"            <li>{site}</li>\n"
+        content_html += f"            <li>{site}</li>\n"
 
-    conteudo_html += """
+    content_html += """
         </ul>
     </body>
     </html>
     """
 
     with open(f'{archiveName}.html', 'w', encoding='utf-8') as arquivo:
-        arquivo.write(conteudo_html)
+        arquivo.write(content_html)
 
     print(f"Arquivo '{archiveName}' criado com sucesso!")
 
@@ -76,8 +70,8 @@ try:
                         packet = packetTranslator(udp.PAYLOAD)
                         print(packet)
                         addr = dnsTranslator(packet.strip())
-                        if(addr != None):
-                            history.append({'dateTime': time.time(), 'site': addr, 'ip': ipTarget })
+                        if(addr != None and 'www.' in addr):
+                            history.append({'dateTime': datetime.fromtimestamp(time.time()).strftime("%d/%m/%Y - %H:%M:%S"), 'site': addr, 'ip': ipTarget })
                 # TCP
                 if ipv4.PROTOCOL == TCP.ID:
                     tcp = TCP(ipv4.PAYLOAD)
@@ -87,7 +81,7 @@ try:
                         print(payload)
                         packet = packetTranslator(tcp.PAYLOAD)  
                         addr = httpTranslator(packet.strip())
-                        if(addr != None):
+                        if(addr != None  and 'www.' in addr):
                             history.append({'dateTime': time.time(), 'site': addr, 'ip': ipTarget })
 except KeyboardInterrupt:
     print("O programa foi interrompido.")
