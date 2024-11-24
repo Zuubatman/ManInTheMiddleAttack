@@ -149,15 +149,12 @@ def packetTranslator(bytes_input, left_padding=0, byte_width=16):
 
     while current < end:
         byte_slice = bytes_input[current : current + byte_width]
-
-        # indentation
+        
         result += " " * left_padding
-
-        # hex section
+        
         for b in byte_slice:
             result += "%02X " % b
 
-        # filler
         for _ in range(byte_width - len(byte_slice)):
             result += " " * 3
 
@@ -198,7 +195,6 @@ def dnsTranslator(packet):
     byte_slice = c[1:num+1]
 
     if(num == 0):
-        print(result)
         return result
 
     result += "."
@@ -262,7 +258,7 @@ def httpTranslator(packet):
             else:
                 break
 
-        url = f'http://{host.strip()}{uri.strip()}'
+        url = f'{host.strip()}{uri.strip()}'
         return url
 
 

@@ -5,6 +5,63 @@ import time
 from datetime import datetime
 from ethernet_tools import EthernetFrame, IPV4, UDP, TCP, hexdump, packetTranslator, dnsTranslator, httpTranslator
 
+
+domains = [
+    "www",
+    "mail",
+    "remote",
+    "blog",
+    "webmail",
+    "server",
+    "ns1",
+    "ns2",
+    "smtp",
+    "secure",
+    "vpn",
+    "m",
+    "shop",
+    "ftp",
+    "mail2",
+    "test",
+    "portal",
+    "ns",
+    "ww1",
+    "host",
+    "support",
+    "dev",
+    "web",
+    "bbs",
+    "ww42",
+    "mx",
+    "email",
+    "cloud",
+    "1",
+    "mail1",
+    "2",
+    "forum",
+    "owa",
+    "www2",
+    "gw",
+    "admin",
+    "store",
+    "mx1",
+    "cdn",
+    "api",
+    "exchange",
+    "app",
+    "gov",
+    "2tty",
+    "vps",
+    "govyty",
+    "hgfgdf",
+    "news",
+    "1rer",
+    "lkjkui",
+    "pt",
+    "ge"
+]
+
+
 history = []
 
 ETH_P_ALL = 0x03 # Listen for everything
@@ -26,12 +83,12 @@ def htmlGenerator():
         </style>
     </head>
     <body>
-        <h1>Lista de Frutas</h1>
+        <h1>History</h1>
         <ul>
     """
 
     for site in history:
-        content_html += f"            <li>{site}</li>\n"
+         content_html += f"""            <li>{site['dateTime']} - {site['ip']} - <a href="{site['site']}">{site['site']}</a></li>\n"""
 
     content_html += """
         </ul>
@@ -42,14 +99,14 @@ def htmlGenerator():
     with open(f'{archiveName}.html', 'w', encoding='utf-8') as arquivo:
         arquivo.write(content_html)
 
-    print(f"Arquivo '{archiveName}' criado com sucesso!")
+    print(f"Archive {archiveName} created!")
 
 try:
     while True:
         raw_data, addr = s.recvfrom(65565)
         # Ethernet
+
         frame = EthernetFrame(raw_data)
-        # print(str(frame))
         # IPV4
         if frame.ETHER_TYPE == IPV4.ID:
             frame = EthernetFrame(raw_data)
@@ -70,8 +127,20 @@ try:
                         packet = packetTranslator(udp.PAYLOAD)
                         print(packet)
                         addr = dnsTranslator(packet.strip())
-                        if(addr != None and 'www.' in addr):
-                            history.append({'dateTime': datetime.fromtimestamp(time.time()).strftime("%d/%m/%Y - %H:%M:%S"), 'site': addr, 'ip': ipTarget })
+                        if(addr != None):
+                            temp = addr.split('.')
+                            domain = temp[0]
+                            print(domain)
+                            if(domain in domains):
+                                obj = {'dateTime': datetime.fromtimestamp(time.time()).strftime("%d/%m/%Y - %H:%M:%S"), 'site': 'https://' + addr + '/', 'ip': ipTarget }
+                                if(obj not in history):
+                                    repeated = False
+                                    for i in history:
+                                        if(i['site'] == f'http://{addr}/'):
+                                            repeated = True
+
+                                    if(not repeated):
+                                        history.append(obj)
                 # TCP
                 if ipv4.PROTOCOL == TCP.ID:
                     tcp = TCP(ipv4.PAYLOAD)
@@ -82,7 +151,23 @@ try:
                         packet = packetTranslator(tcp.PAYLOAD)  
                         addr = httpTranslator(packet.strip())
                         if(addr != None  and 'www.' in addr):
-                            history.append({'dateTime': time.time(), 'site': addr, 'ip': ipTarget })
+                            obj = {'dateTime': datetime.fromtimestamp(time.time()).strftime("%d/%m/%Y - %H:%M:%S"), 'site': 'http://' + addr, 'ip': ipTarget } 
+                            if(obj not in history):
+                                index = 0
+                                repeated = False
+                                for i in history:
+                                    if(i['site'] == f'https://{addr}'):
+                                        repeated = True
+                                        break
+
+                                    index = index + 1
+
+                                if(not repeated):
+                                    history.append(obj)
+                                else:
+                                    del history[index]
+                                    history.append(obj)
+
 except KeyboardInterrupt:
-    print("O programa foi interrompido.")
+    print("Program ended. Genereting results...")
     htmlGenerator()
