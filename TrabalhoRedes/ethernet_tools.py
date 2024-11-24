@@ -142,6 +142,130 @@ def hexdump(bytes_input, left_padding=0, byte_width=16):
 
     return result
 
+def packetTranslator(bytes_input, left_padding=0, byte_width=16):
+    current = 0
+    end = len(bytes_input)
+    result = ""
+
+    while current < end:
+        byte_slice = bytes_input[current : current + byte_width]
+
+        # indentation
+        result += " " * left_padding
+
+        # hex section
+        for b in byte_slice:
+            result += "%02X " % b
+
+        # filler
+        for _ in range(byte_width - len(byte_slice)):
+            result += " " * 3
+
+        current += byte_width
+    
+    return result 
+
+def dnsTranslator(packet):
+    packetArr = packet.split(" ")
+    withoutHeader = packetArr[12:]
+    num = int(withoutHeader[0],16) 
+    result = ""
+    byte_slice = withoutHeader[1:num+1]
+    
+    for b in byte_slice:
+        result += chr(int(b, 16)) 
+
+    result += "."
+
+    a = withoutHeader[num+1:]
+    num = int(a[0],16) 
+    byte_slice = a[1:num+1]
+
+    for b in byte_slice:
+        result += chr(int(b, 16))
+
+    result += "."
+
+    b = a[num+1:]
+    num = int(b[0],16) 
+    byte_slice = b[1:num+1]
+
+    for c in byte_slice:
+        result += chr(int(c, 16))
+
+    c = b[num+1:]
+    num = int(c[0],16) 
+    byte_slice = c[1:num+1]
+
+    if(num == 0):
+        print(result)
+        return result
+
+    result += "."
+
+    for c in byte_slice:
+        result += chr(int(c, 16))
+
+
+    # d = c[num+1:]
+    # num = int(d[0],16) 
+    # byte_slice = d[1:num+1]
+
+    # if(num == 0):
+    #     print(result)
+    #     return result
+    
+    # else:
+    #     result += "."
+    #     for c in byte_slice:
+    #         result += chr(int(d, 16))
+    #     print(result)
+
+def httpTranslator(packet):
+    packetArr = packet.split(" ")
+
+    method = packetArr[0:3]
+
+    result = ""
+    for c in method:
+        if(c != ''):
+            result += chr(int(c, 16))
+
+    if (result == 'GET'):
+        withoutMethod = packetArr[4:]
+        uri = ''
+        cont = 0
+
+        for i in withoutMethod:
+            temp = chr(int(i, 16))
+            if(temp != " "):
+                uri += temp
+                cont = cont + 1 
+            else:
+                break
+
+        withoutUri = withoutMethod[cont+1:]
+
+        cont = 1
+        for i in withoutUri:
+            if(i != "0A"):
+                cont = cont + 1 
+            else:
+                break
+
+        withoutVersionAndHost = withoutUri[cont+6:]
+
+        host = ''
+        for i in withoutVersionAndHost:
+            if(i != "0A"):
+                host += chr(int(i, 16)) 
+            else:
+                break
+
+        url = f'http://{host.strip()}{uri.strip()}'
+        return url
+
+
 class TCP:
     ID = 0x06 # IPv4 Protocol ID
 
